@@ -4,6 +4,7 @@
     <inherits name="com.google.gwt.user.User"/>
     <inherits name="com.google.gwt.user.theme.clean.Clean"/>
     <entry-point class="pacman.client.GwtGame"/>
+    <collapse-all-properties/>
     <source path="client"/>
     <source path="shared"/>
 </module>

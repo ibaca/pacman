@@ -91,7 +91,7 @@ public class JfxGame extends Application {
             game.endGame();
             ticker = null;
         }
-        game = new MainLoop(drawer, 0);
+        game = new MainLoop(drawer, 1);
         playPause(JfxGame.this.game); // start ticker
     }
 

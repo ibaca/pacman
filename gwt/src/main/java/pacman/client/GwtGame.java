@@ -1,63 +1,54 @@
 package pacman.client;
 
 import static com.google.gwt.safehtml.shared.SafeHtmlUtils.fromTrustedString;
+import static elemental2.dom.DomGlobal.clearInterval;
+import static elemental2.dom.DomGlobal.document;
+import static elemental2.dom.DomGlobal.setInterval;
 
-import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.core.client.EntryPoint;
-import com.google.gwt.event.dom.client.KeyCodes;
 import com.google.gwt.user.client.Command;
-import com.google.gwt.user.client.Timer;
-import com.google.gwt.user.client.Window;
+import com.google.gwt.user.client.ui.HTMLPanel;
 import com.google.gwt.user.client.ui.MenuBar;
 import com.google.gwt.user.client.ui.MenuItem;
 import com.google.gwt.user.client.ui.RootPanel;
+import elemental2.dom.DomGlobal;
+import elemental2.dom.HTMLCanvasElement;
+import javax.annotation.Nullable;
+import jsinterop.base.Js;
+import org.jboss.gwt.elemento.core.Elements;
+import org.jboss.gwt.elemento.core.EventType;
+import org.jboss.gwt.elemento.core.Key;
 import pacman.shared.Drawer;
 import pacman.shared.MainLoop;
 import pacman.shared.Maze;
 
 public class GwtGame implements EntryPoint {
 
-    private final String BAR_CONTAINER = "barContainer";
-    private final String CANVAS_CONTAINER = "canvasContainer";
-
-    private final int CANVAS_WIDTH = 700;
-    private final int CANVAS_HEIGHT = 700;
-
     private MainLoop game;
-    private Timer ticker;
+    private @Nullable Double ticker;
 
     @Override public void onModuleLoad() {
         MenuItem menuScore = new MenuItem(fromTrustedString("Score: 0"));
         Drawer.Toaster score = s -> menuScore.setText("Score: " + s);
-        Drawer.Toaster alert = Window::alert;
+        Drawer.Toaster alert = DomGlobal::alert;
 
         //Create canvas
-        Canvas canvas = Canvas.createIfSupported();
-        if (canvas == null) {
-            Window.alert("Ups! your browser do not support canvas...");
-            return;
-        }
+        HTMLCanvasElement canvas = Elements.canvas().get();
+        canvas.width = 700; canvas.height = 700;
 
-        canvas.setWidth(CANVAS_WIDTH + "px");
-        canvas.setHeight(CANVAS_HEIGHT + "px");
-        canvas.setCoordinateSpaceWidth(CANVAS_WIDTH);
-        canvas.setCoordinateSpaceHeight(CANVAS_HEIGHT);
-
-        canvas.addKeyDownHandler(event -> {
-            switch (event.getNativeKeyCode()) {
-                case KeyCodes.KEY_UP: game.pacMan.nextDirection = Maze.UP; break;
-                case KeyCodes.KEY_DOWN: game.pacMan.nextDirection = Maze.DOWN; break;
-                case KeyCodes.KEY_LEFT: game.pacMan.nextDirection = Maze.LEFT; break;
-                case KeyCodes.KEY_RIGHT: game.pacMan.nextDirection = Maze.RIGHT; break;
-                case KeyCodes.KEY_SPACE: playPause(GwtGame.this.game); break;
+        EventType.bind(document, EventType.keydown, ev -> {
+            switch (Key.fromEvent(ev)) {
+                case ArrowUp: game.pacMan.nextDirection = Maze.UP; break;
+                case ArrowDown: game.pacMan.nextDirection = Maze.DOWN; break;
+                case ArrowLeft: game.pacMan.nextDirection = Maze.LEFT; break;
+                case ArrowRight: game.pacMan.nextDirection = Maze.RIGHT; break;
+                case Spacebar: playPause(game); break;
             }
         });
-
-        canvas.addMouseOverHandler(event -> canvas.setFocus(true));
+        EventType.bind(canvas, EventType.mouseover, ev -> canvas.focus());
 
         //Set drawer and menu bar
         Drawer drawer = new Drawer(new GwtCanvas(canvas), score, alert);
-        RootPanel.get(CANVAS_CONTAINER).add(canvas);
         Runnable restart = () -> restart(drawer);
 
         Command newGame = restart::run;
@@ -71,37 +62,43 @@ public class GwtGame implements EntryPoint {
         rootBar.addItem("Juego", bar);
         rootBar.addItem(menuScore);
 
-        RootPanel.get(BAR_CONTAINER).add(rootBar);
+        RootPanel body = RootPanel.get();
+        body.add(rootBar);
 
-        canvas.setFocus(true);
+        HTMLPanel canvasContainer = new HTMLPanel("");
+        canvasContainer.addStyleName("canvasContainer");
+        canvasContainer.getElement().appendChild(Js.cast(canvas));
+        body.add(canvasContainer);
 
+        canvas.focus();
         restart.run();
-
     }
 
     public void restart(Drawer drawer) {
         if (game != null) {
             game.endGame();
-            ticker = null;
+            stop();
         }
-        game = new MainLoop(drawer, 0);
-        playPause(GwtGame.this.game); // start ticker
+        game = new MainLoop(drawer, 1);
+        playPause(game); // start ticker
     }
 
     public void playPause(MainLoop game) {
         if (ticker == null) {  // play
-            ticker = new Timer() {
-                @Override
-                public void run() {
-                    if (game.gameEnded) cancel();
-                    else game.tick();
+            ticker = setInterval(args -> {
+                if (ticker == null || game.gameEnded) {
+                    stop(); return;
                 }
-            };
-            ticker.scheduleRepeating(game.delta);
+                game.tick();
+            }, game.delta);
         } else {  // pause
-            ticker.cancel();
-            ticker = null;
+            stop();
         }
     }
 
+    private void stop() {
+        if (ticker == null) return;
+        clearInterval(ticker);
+        ticker = null;
+    }
 }

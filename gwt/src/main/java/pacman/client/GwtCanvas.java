@@ -2,29 +2,32 @@ package pacman.client;
 
 import static java.lang.Math.toRadians;
 
-import com.google.gwt.canvas.dom.client.Context2d;
+import elemental2.dom.CanvasRenderingContext2D;
+import elemental2.dom.CanvasRenderingContext2D.FillStyleUnionType;
+import elemental2.dom.HTMLCanvasElement;
+import jsinterop.base.Js;
 import pacman.shared.Canvas;
 
 public class GwtCanvas implements Canvas {
 
-    private com.google.gwt.canvas.client.Canvas canvas;
-    private Context2d c2d;
+    private HTMLCanvasElement canvas;
+    private CanvasRenderingContext2D c2d;
 
-    public GwtCanvas(com.google.gwt.canvas.client.Canvas canvas) {
+    public GwtCanvas(HTMLCanvasElement canvas) {
         this.canvas = canvas;
-        this.c2d = canvas.getContext2d();
+        this.c2d = Js.cast(canvas.getContext("2d"));
     }
 
     @Override public double getWidth() {
-        return canvas.getCoordinateSpaceWidth();
+        return canvas.width;
     }
 
     @Override public double getHeight() {
-        return canvas.getCoordinateSpaceHeight();
+        return canvas.height;
     }
 
     @Override public void setFill(String color) {
-        c2d.setFillStyle(color);
+        c2d.fillStyle = FillStyleUnionType.of(color);
     }
 
     @Override public void fillRect(double x, double y, double w, double h) {
